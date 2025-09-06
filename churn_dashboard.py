@@ -5,7 +5,6 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
-import pickle
 import plotly.express as px
 import plotly.graph_objects as go
 
@@ -25,45 +24,54 @@ st.sidebar.header("🔍 Navigation")
 page = st.sidebar.selectbox("Choose a page:", 
                            ["🎯 Churn Predictor", "📊 Data Analysis", "🤖 Model Performance"])
 
-# Load data function (you'll need to adapt this to your data loading)
+# Load your actual data
 @st.cache_data
 def load_data():
-    # Replace this with your actual data loading
-    # For demo, creating sample data structure
-    np.random.seed(42)
-    n_samples = 1000
-    data = {
-        'tenure': np.random.randint(1, 73, n_samples),
-        'InternetService_Fiber optic': np.random.choice([0, 1], n_samples, p=[0.6, 0.4]),
-        'InternetService_No': np.random.choice([0, 1], n_samples, p=[0.8, 0.2]),
-        'Contract_One year': np.random.choice([0, 1], n_samples, p=[0.7, 0.3]),
-        'Contract_Two year': np.random.choice([0, 1], n_samples, p=[0.8, 0.2]),
-        'PaymentMethod_Electronic check': np.random.choice([0, 1], n_samples, p=[0.7, 0.3]),
-        'PaymentMethod_Mailed check': np.random.choice([0, 1], n_samples, p=[0.8, 0.2]),
-        'PaymentMethod_Credit card (automatic)': np.random.choice([0, 1], n_samples, p=[0.8, 0.2]),
-        'Churn': np.random.choice([0, 1], n_samples, p=[0.73, 0.27])
-    }
-    return pd.DataFrame(data)
+    # Replace with your actual data loading path
+    # df = pd.read_csv('your_telco_data.csv')
+    # For now, you'll need to replace this with your actual data loading
+    st.warning("Update the load_data() function with your actual data file path")
+    return None
 
-# Load model function
+# Load and train your actual model
 @st.cache_resource
 def load_model():
-    # In real app, you'd load your trained model
-    # For demo, training a simple model
+    # This should match your actual model training process
     df = load_data()
-    features = ['tenure', 'InternetService_Fiber optic', 'InternetService_No', 
-               'Contract_One year', 'Contract_Two year', 'PaymentMethod_Electronic check', 
-               'PaymentMethod_Mailed check', 'PaymentMethod_Credit card (automatic)']
+    if df is None:
+        return None
+    
+    # Your feature set - update to match your final model
+    features = [
+        'tenure', 'MonthlyCharges', 'TotalCharges', 'PaperlessBilling',
+        'InternetService_Fiber optic', 'InternetService_No',        
+        'Contract_One year', 'Contract_Two year',                   
+        'PaymentMethod_Electronic check', 'PaymentMethod_Mailed check', 
+        'PaymentMethod_Credit card (automatic)'
+    ]
+    
     X = df[features]
     y = df['Churn']
     
-    model = RandomForestClassifier(n_estimators=100, random_state=42)
+    # Train with your optimal settings
+    model = RandomForestClassifier(
+        n_estimators=100,
+        random_state=22,
+        max_depth=10,
+        min_samples_split=5,
+        class_weight='balanced'
+    )
+    
     model.fit(X, y)
-    return model
+    return model, features
 
 # Load data and model
 df = load_data()
-model = load_model()
+if df is not None:
+    model, feature_names = load_model()
+else:
+    st.error("Please update the data loading function with your actual data path")
+    st.stop()
 
 # PAGE 1: CHURN PREDICTOR
 if page == "🎯 Churn Predictor":
@@ -74,8 +82,12 @@ if page == "🎯 Churn Predictor":
     with col1:
         st.subheader("Customer Information")
         
-        # Input features
+        # Input features based on your actual model
         tenure = st.slider("Customer Tenure (months)", 1, 72, 24)
+        monthly_charges = st.slider("Monthly Charges ($)", 18.0, 119.0, 65.0)
+        total_charges = st.slider("Total Charges ($)", 18.0, 8700.0, 2000.0)
+        
+        paperless_billing = st.selectbox("Paperless Billing", ["No", "Yes"])
         
         internet_service = st.selectbox("Internet Service", 
                                       ["DSL", "Fiber optic", "No Internet"])
@@ -95,6 +107,9 @@ if page == "🎯 Churn Predictor":
         # Convert inputs to model format
         input_data = {
             'tenure': tenure,
+            'MonthlyCharges': monthly_charges,
+            'TotalCharges': total_charges,
+            'PaperlessBilling': 1 if paperless_billing == "Yes" else 0,
             'InternetService_Fiber optic': 1 if internet_service == "Fiber optic" else 0,
             'InternetService_No': 1 if internet_service == "No Internet" else 0,
             'Contract_One year': 1 if contract_type == "One year" else 0,
@@ -106,10 +121,13 @@ if page == "🎯 Churn Predictor":
         
         # Make prediction
         input_df = pd.DataFrame([input_data])
-        prediction = model.predict(input_df)[0]
         prediction_proba = model.predict_proba(input_df)[0][1]
         
-        # Display prediction
+        # Use your optimal threshold (0.4)
+        optimal_threshold = 0.4
+        prediction = 1 if prediction_proba >= optimal_threshold else 0
+        
+        # Display prediction with your threshold
         if prediction == 1:
             st.error(f"⚠️ HIGH CHURN RISK")
             st.error(f"Churn Probability: {prediction_proba:.1%}")
@@ -117,34 +135,37 @@ if page == "🎯 Churn Predictor":
             st.success(f"✅ LOW CHURN RISK")
             st.success(f"Churn Probability: {prediction_proba:.1%}")
         
-        # Risk level
+        # Risk level based on your analysis
         if prediction_proba >= 0.7:
             risk_level = "🔴 CRITICAL"
-        elif prediction_proba >= 0.5:
+        elif prediction_proba >= optimal_threshold:
             risk_level = "🟡 MODERATE"
         else:
             risk_level = "🟢 LOW"
         
         st.metric("Risk Level", risk_level)
+        st.caption(f"Using {optimal_threshold:.0%} threshold for optimal business impact")
         
-        # Recommendations
+        # Recommendations based on your findings
         st.subheader("💡 Recommendations")
-        if prediction_proba >= 0.5:
+        if prediction_proba >= optimal_threshold:
             st.write("**Immediate Actions:**")
             if input_data['PaymentMethod_Electronic check'] == 1:
-                st.write("• Offer automatic payment incentive")
+                st.write("• Offer automatic payment incentive (high-risk payment method)")
             if input_data['InternetService_Fiber optic'] == 1:
-                st.write("• Review fiber service satisfaction")
+                st.write("• Review fiber service satisfaction (unexpectedly high churn)")
             if input_data['Contract_One year'] == 0 and input_data['Contract_Two year'] == 0:
-                st.write("• Offer contract upgrade with benefits")
+                st.write("• Offer contract upgrade with benefits (month-to-month high risk)")
             if tenure < 12:
-                st.write("• Implement new customer retention program")
+                st.write("• Implement new customer retention program (early churn risk)")
+            if monthly_charges > 80:
+                st.write("• Consider pricing review or value-add services")
 
-# PAGE 2: DATA ANALYSIS
+# PAGE 2: DATA ANALYSIS  
 elif page == "📊 Data Analysis":
     st.header("📊 Churn Analysis Dashboard")
     
-    # Key metrics
+    # Key metrics from your actual analysis
     col1, col2, col3, col4 = st.columns(4)
     with col1:
         st.metric("Total Customers", f"{len(df):,}")
@@ -153,18 +174,18 @@ elif page == "📊 Data Analysis":
     with col3:
         st.metric("Avg Tenure", f"{df['tenure'].mean():.1f} months")
     with col4:
+        # High risk calculation based on your findings
         high_risk = len(df[(df['PaymentMethod_Electronic check'] == 1) & 
                           (df['Contract_One year'] == 0) & (df['Contract_Two year'] == 0)])
         st.metric("High Risk Customers", f"{high_risk:,}")
     
-    # Analysis sections
+    # Analysis sections based on your EDA
     st.subheader("🔍 Churn by Key Factors")
     
-    # Contract analysis
     col1, col2 = st.columns(2)
     
     with col1:
-        # Create contract type column for analysis
+        # Contract analysis from your results
         df['Contract_Type'] = 'Month-to-month'
         df.loc[df['Contract_One year'] == 1, 'Contract_Type'] = 'One year'
         df.loc[df['Contract_Two year'] == 1, 'Contract_Type'] = 'Two year'
@@ -180,9 +201,12 @@ elif page == "📊 Data Analysis":
         )
         fig_contract.update_layout(showlegend=False)
         st.plotly_chart(fig_contract, use_container_width=True)
+        
+        # Show actual numbers from your analysis
+        st.caption("Month-to-month: ~43% churn | One year: ~11% churn | Two year: ~3% churn")
     
     with col2:
-        # Internet service analysis
+        # Internet service analysis from your results
         df['Internet_Type'] = 'DSL'
         df.loc[df['InternetService_Fiber optic'] == 1, 'Internet_Type'] = 'Fiber optic'
         df.loc[df['InternetService_No'] == 1, 'Internet_Type'] = 'No Internet'
@@ -198,66 +222,55 @@ elif page == "📊 Data Analysis":
         )
         fig_internet.update_layout(showlegend=False)
         st.plotly_chart(fig_internet, use_container_width=True)
+        
+        st.caption("Fiber optic: ~42% churn | DSL: ~19% churn | No Internet: ~7% churn")
     
-    # Tenure analysis
-    st.subheader("📈 Churn Rate by Tenure")
+    # Payment method analysis
+    st.subheader("💳 Payment Method Impact")
+    df['Payment_Method'] = 'Bank transfer (automatic)'
+    df.loc[df['PaymentMethod_Electronic check'] == 1, 'Payment_Method'] = 'Electronic check'
+    df.loc[df['PaymentMethod_Mailed check'] == 1, 'Payment_Method'] = 'Mailed check'
+    df.loc[df['PaymentMethod_Credit card (automatic)'] == 1, 'Payment_Method'] = 'Credit card (automatic)'
     
-    # Create tenure groups for better visualization
-    df['Tenure_Group'] = pd.cut(df['tenure'], bins=[0, 12, 24, 36, 48, 72], 
-                               labels=['0-12m', '12-24m', '24-36m', '36-48m', '48-72m'])
-    tenure_churn = df.groupby('Tenure_Group')['Churn'].mean()
+    payment_churn = df.groupby('Payment_Method')['Churn'].mean().sort_values(ascending=False)
     
-    fig_tenure = px.line(
-        x=tenure_churn.index, 
-        y=tenure_churn.values,
-        title="Churn Rate Decreases with Tenure",
-        markers=True
+    fig_payment = px.bar(
+        x=payment_churn.index, 
+        y=payment_churn.values,
+        title="Churn Rate by Payment Method",
+        color=payment_churn.values,
+        color_continuous_scale="RdYlGn_r"
     )
-    fig_tenure.update_traces(line_color='red', line_width=3, marker_size=8)
-    st.plotly_chart(fig_tenure, use_container_width=True)
-    
-    # Risk segments
-    st.subheader("🚨 High-Risk Customer Segments")
-    
-    high_risk_segments = df[
-        (df['PaymentMethod_Electronic check'] == 1) & 
-        (df['Contract_One year'] == 0) & 
-        (df['Contract_Two year'] == 0)
-    ]['Churn'].mean()
-    
-    low_risk_segments = df[
-        (df['PaymentMethod_Electronic check'] == 0) & 
-        (df['Contract_Two year'] == 1)
-    ]['Churn'].mean()
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        st.metric("High-Risk Segment", f"{high_risk_segments:.1%}", 
-                 help="Month-to-month + Electronic check")
-    with col2:
-        st.metric("Low-Risk Segment", f"{low_risk_segments:.1%}", 
-                 help="Two-year contract + Non-electronic payment")
+    fig_payment.update_layout(showlegend=False)
+    st.plotly_chart(fig_payment, use_container_width=True)
+    st.caption("Electronic check customers show significantly higher churn rates")
 
 # PAGE 3: MODEL PERFORMANCE
 elif page == "🤖 Model Performance":
     st.header("🤖 Model Performance Analysis")
     
-    # Model metrics (simulated - replace with actual metrics)
+    # Your actual model metrics
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.metric("Accuracy", "77.8%")
+        st.metric("Accuracy", "76.9%")
     with col2:
-        st.metric("AUC Score", "0.823")
+        st.metric("AUC Score", "0.837")
     with col3:
-        st.metric("Precision (Churn)", "60%")
+        st.metric("Churn Recall", "73%")
+    
+    # Threshold optimization results
+    st.subheader("🎯 Threshold Optimization")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        st.metric("Optimal Threshold", "0.4", help="Balances recall and operational feasibility")
+        st.metric("Contact Rate", "41%", help="Percentage of customers to contact")
+    with col2:
+        st.metric("Churn Detection", "81%", help="Percentage of churners caught")
+        st.metric("Precision", "52%", help="Accuracy of churn predictions")
     
     # Feature importance
     st.subheader("📊 Feature Importance")
-    
-    # Get feature importance from model
-    feature_names = ['tenure', 'InternetService_Fiber optic', 'InternetService_No', 
-                    'Contract_One year', 'Contract_Two year', 'PaymentMethod_Electronic check', 
-                    'PaymentMethod_Mailed check', 'PaymentMethod_Credit card (automatic)']
     
     importances = model.feature_importances_
     importance_df = pd.DataFrame({
@@ -274,20 +287,19 @@ elif page == "🤖 Model Performance":
     )
     st.plotly_chart(fig_importance, use_container_width=True)
     
-    # Model insights
+    # Model insights based on your analysis
     st.subheader("🔍 Key Model Insights")
     st.write("**Top Predictive Factors:**")
-    st.write("1. **Tenure** - Most important predictor")
-    st.write("2. **Contract Type** - Strong impact on retention") 
-    st.write("3. **Payment Method** - Electronic check increases risk")
-    st.write("4. **Internet Service** - Fiber optic users have higher churn")
+    st.write("1. **Tenure** - Most important predictor (longer tenure = lower churn)")
+    st.write("2. **Contract Type** - Month-to-month contracts show 43% churn vs 3% for two-year") 
+    st.write("3. **Payment Method** - Electronic check users show 45% churn rate")
+    st.write("4. **Internet Service** - Fiber optic users unexpectedly show higher churn")
     
-    st.write("**Business Recommendations:**")
-    st.write("• Focus retention efforts on new customers (< 12 months)")
-    st.write("• Incentivize contract upgrades from month-to-month")
-    st.write("• Promote automatic payment methods")
-    st.write("• Investigate fiber optic service quality issues")
+    st.write("**Business Impact:**")
+    st.write("• Model catches 81% of churners while contacting 41% of customers")
+    st.write("• Improved recall by 21 percentage points over baseline model")
+    st.write("• Optimal threshold provides strong ROI for retention campaigns")
 
 # Footer
 st.markdown("---")
-st.markdown("*Built with Streamlit | Data Science Project | Customer Churn Prediction*")
+st.markdown("*Built with Streamlit | Telco Churn Prediction | Random Forest Model*")
