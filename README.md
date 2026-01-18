@@ -10,6 +10,8 @@ Conducted threshold optimization analysis to balance churn detection (81-87%) ag
 - Built interactive visualizations demonstrating business trade-offs between detection accuracy and resource constraints
 - Designed framework for cost-benefit analysis incorporating campaign costs, CLV, and operational capacity
 
+<img width="1489" height="590" alt="download" src="https://github.com/user-attachments/assets/8c8b6787-d6e2-4a8c-a3bf-0c51f4a50f70" />
+
 ### Business Impact:
 The threshold analysis framework enables companies to make data-driven decisions about retention campaign scope. For example, at a 0.4 threshold, the model flags 42% of customers while catching 81% of potential churners, allowing businesses to allocate retention resources strategically rather than reactively. This approach recognizes that preventing churn directly extends customer lifetime value and improves acquisition efficiency by reducing the need to constantly replace departing customers.
 
